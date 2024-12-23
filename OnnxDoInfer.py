@@ -167,14 +167,12 @@ class OnnxDoInforForUNet(object):
     def doInfer(self, image):
         inputData, nw, nh = self.preprocess_input(image, self.input_shape[1:3])
         pred = self.ort_session.run(output_names=self.output_names, input_feed={self.input_name: inputData})[0][0]
-        pred = np.argmax(pred, axis=-1).astype(np.float32)
+        # pred = np.argmax(pred, axis=-1).astype(np.float32)
         ph, pw = pred.shape[:2]
         ih,iw,_ =  image.shape
         startx, starty = (pw - nw)//2 , (ph - nh)//2
         pred = pred[starty:starty+nh, startx:startx+nw]
         pred = cv2.resize(pred, (iw, ih), interpolation = cv2.INTER_LINEAR)
-        pred = np.expand_dims(pred, -1)
-        
         return pred
 
 def draw_for_UNet(image, pred):
@@ -199,8 +197,14 @@ class OnnxDoInforForColorChecker(object):
             if cropImg.shape[0]<1 or cropImg.shape[1]<1:
                 continue
             mask = self.uNetOnnxRuntime.doInfer(cropImg)
-            # image[ymin:ymax, xmin:xmax] = mask * image[ymin:ymax, xmin:xmax]
-            image[ymin:ymax, xmin:xmax] = np.where(mask>0, mask*10, image[ymin:ymax, xmin:xmax])
+            print(mask.shape)
+            # maskImg = np.zeros_like(image[ymin:ymax, xmin:xmax])
+            # for c in range(mask.shape[-1]):
+            #     print(c)
+            #     mask_ = mask[...,c:c+1]
+            #     # image = mask_ * image[ymin:ymax, xmin:xmax]
+            #     maskImg =  np.where(mask_>0, mask_*100, image[ymin:ymax, xmin:xmax])
+            # image[ymin:ymax, xmin:xmax] = maskImg
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
             cv2.putText(image, self.yoloOnnxRuntime.class_names[int(classes[i])]+"%2f"%scores[i], (xmin, ymin), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
         
@@ -217,14 +221,14 @@ if __name__ == "__main__":
     cap = cv2.VideoCapture(0)
     fps = 0
 
-    while 1:
-        t1 = time.time()
-        _,image = cap.read()
-        image = colorCheckerOnnxRuntime.doInfer(image)
-        t2 = time.time() - t1
-        fps += 1./t2
-        fps /= 2
-        cv2.putText(image, "FPS: " + str(int(fps)), (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    # while 1:
+    #     t1 = time.time()
+    #     _,image = cap.read()
+    #     image = colorCheckerOnnxRuntime.doInfer(image)
+    #     t2 = time.time() - t1
+    #     fps += 1./t2
+    #     fps /= 2
+    #     cv2.putText(image, "FPS: " + str(int(fps)), (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             
-        cv2.imshow("",image)
-        cv2.waitKey(1)
+    #     cv2.imshow("",image)
+    #     cv2.waitKey(1)
